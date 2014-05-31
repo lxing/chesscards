@@ -1,7 +1,15 @@
-Name: Conscript
-Cost: 1
-Effect: Place a pawn anywhere on your first 3 ranks.
+Name: Hasty Conscription
+Cost: 2
+Effect: Place a pawn from your reserves anywhere on your first 3 ranks.
 
-Name: Recruit
+Name: New Recruits
+Cost: 5
+Effect: Place a pawn or minor piece from your reserves anywhere on your first 3 ranks.
+
+Name: Skirmisher Lines*
+Cost: 2
+Effect: Pawns on your second rank can advance up to 3 spaces.
+
+Name: Clearance Sacrifice
 Cost: 3
-Effect: Place a piece of value 3 or less anywhere on your first 3 ranks.
+Effect: Sacrifice a pawn. Add a pawn to your reserves.
