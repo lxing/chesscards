@@ -29,3 +29,17 @@ div.col {
 #cards-col {
   text-align: center;
 }
+
+div.card {
+  font-size: 12px;
+  border: 1px solid black;
+  border-radius: 3px;
+  margin-bottom: 3px;
+  padding: 5px;
+  cursor: pointer;
+}
+
+div.bcard {
+  color: white;
+  background: black;
+}
