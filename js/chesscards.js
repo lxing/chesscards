@@ -100,11 +100,7 @@ function onDrop(source, target, piece, newPos, oldPos) {
 
 function renderStatus() {
   $('.anymove').html("");
-  if (turn === 'w') {
-    $('#wmove').html("White to move");
-  } else {
-    $('#bmove').html("Black to move");
-  }
+  $('#' + turn + 'move').html("GO")
 
   $('#wpoints').html(actionPoints['w'] + ' AP');
   $('#bpoints').html(actionPoints['b'] + ' AP');
@@ -116,6 +112,7 @@ function renderStatus() {
 }
 
 function endTurn() {
+  drawCard(turn);
   actionPoints[turn] += 1;
   turn = game.turn();
 
@@ -124,6 +121,10 @@ function endTurn() {
   events = deepCopy(DEFAULT_EVENTS);
 
   renderStatus();
+}
+
+function drawCard(turn) {
+
 }
 
 function applyCard(card) {
@@ -173,12 +174,12 @@ function initStats() {
   for(var i=0; i<bstats.length; i++) {
     $(bstats[i]).css('width',SQUARE_SIZE)
       .css('height', SQUARE_SIZE).css('width', SQUARE_SIZE)
-      .css('paddingLeft', i*SQUARE_SIZE + BOARD_BORDER_SIZE);
     $(wstats[i]).css('width',SQUARE_SIZE)
       .css('height', SQUARE_SIZE).css('width', SQUARE_SIZE)
-      .css('paddingLeft', i*SQUARE_SIZE + BOARD_BORDER_SIZE)
-      .css('marginTop', -SQUARE_SIZE);
   }
+
+  $('#bmove').css('margin-top', SQUARE_SIZE/2);
+  $('#wmove').css('margin-top', -SQUARE_SIZE/2);
 }
 
 function init() {
