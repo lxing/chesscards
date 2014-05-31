@@ -1,7 +1,7 @@
 // TODO: Shift these inside anonymous scope when done debuggin
 var game;
-var spare;
-var points;
+var sparePieces;
+var actionPoints;
 var board;
 var foo;
 
@@ -56,8 +56,8 @@ DEFAULT_EVENTS = {
     });
     if (move === null) return false;
     if (captured !== null) {
-      spare[turn][captured.type] += 1;
-      points[turn] += POINTS[captured.type];
+      sparePieces[turn][captured.type] += 1;
+      actionPoints[turn] += PIECE_VALUES[captured.type];
     }
   },
   onDropSpare: function(source, target, piece, newPos, oldPos) {
@@ -67,7 +67,7 @@ DEFAULT_EVENTS = {
   }
 }
 
-POINTS = {
+PIECE_VALUES = {
   p: 1, n: 3, b: 3, r: 5, q: 9
 }
 
@@ -96,21 +96,33 @@ function onDrop(source, target, piece, newPos, oldPos) {
     if (events.onDropSpare(source, target, piece, newPos, oldPos) === false)
       return 'snapback';
   }
-  renderStatus();
 }
 
 function renderStatus() {
-  for (var type in spare['w']) {
-    $('#wspare-' + type).html(spare['w'][type]);
-    $('#bspare-' + type).html(spare['b'][type]);
+  $('.anymove').html("");
+  if (turn === 'w') {
+    $('#wmove').html("White to move");
+  } else {
+    $('#bmove').html("Black to move");
+  }
+
+  $('#wpoints').html(actionPoints['w'] + ' AP');
+  $('#bpoints').html(actionPoints['b'] + ' AP');
+
+  for (var type in sparePieces['w']) {
+    $('#wspare-' + type).html(sparePieces['w'][type]);
+    $('#bspare-' + type).html(sparePieces['b'][type]);
   }
 }
 
 function endTurn() {
+  actionPoints[turn] += 1;
   turn = game.turn();
+
   board.position(game.fen());
   activeCard = null;
   events = deepCopy(DEFAULT_EVENTS);
+
   renderStatus();
 }
 
@@ -142,35 +154,35 @@ var cfg = {
 game = new Chess();
 turn = game.turn();
 board = new ChessBoard('board', cfg);
-spare = {
+sparePieces = {
   w: {p: 0, n: 0, b: 0, r: 0, q: 0},
   b: {p: 0, n: 0, b: 0, r: 0, q: 0}
 }
-var points = {w: 0, b: 0};
+var actionPoints = {w: 0, b: 0};
 var cards = {w: [], b: []};
 var activeCard = null;
 var deck = [];
 var events = deepCopy(DEFAULT_EVENTS);
 
-function initSpareCounts() {
+function initStats() {
   var boardWidth = parseInt($('#board').css('width'), 10) - 1;
   SQUARE_SIZE = (boardWidth - (boardWidth % 8))/ 8;
 
-  var bspares = $('#bspare-container .spare');
-  var wspares = $('#wspare-container .spare');
-  for(var i=0; i<bspares.length; i++) {
-    $(bspares[i]).css('width',SQUARE_SIZE)
+  var bstats = $('#bstats-container div');
+  var wstats = $('#wstats-container div');
+  for(var i=0; i<bstats.length; i++) {
+    $(bstats[i]).css('width',SQUARE_SIZE)
       .css('height', SQUARE_SIZE).css('width', SQUARE_SIZE)
-      .css('paddingLeft', (i+1)*SQUARE_SIZE + BOARD_BORDER_SIZE);
-    $(wspares[i]).css('width',SQUARE_SIZE)
+      .css('paddingLeft', i*SQUARE_SIZE + BOARD_BORDER_SIZE);
+    $(wstats[i]).css('width',SQUARE_SIZE)
       .css('height', SQUARE_SIZE).css('width', SQUARE_SIZE)
-      .css('marginTop', -SQUARE_SIZE)
-      .css('paddingLeft', (i+1)*SQUARE_SIZE + BOARD_BORDER_SIZE);
+      .css('paddingLeft', i*SQUARE_SIZE + BOARD_BORDER_SIZE)
+      .css('marginTop', -SQUARE_SIZE);
   }
 }
 
 function init() {
-  initSpareCounts();
+  initStats();
 }
 
 init();
@@ -183,11 +195,11 @@ CHESSCARDS = [
   {
     name: 'Hasty Conscription',
     description: 'Place a pawn from your reserves anywhere on your first 3 ranks.',
-    cost: 1,
+    cost: 2,
     onDragStartSpare: function(source, piece, position) {
       if (sameColor(turn, piece) === false) return false;
       type = pieceStrToType(piece);
-      if (POINTS[type] > 1 || spare[turn][type] < 1) return false;
+      if (POINTS[type] > 1 || sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = pieceStrToType(piece);
@@ -195,17 +207,17 @@ CHESSCARDS = [
       if ((turn === 'w' && rank > 3) || (turn === 'b' && rank < 6)) return false;
       if (DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
-      spare[turn][type] -= 1;
+      sparePieces[turn][type] -= 1;
     }
   },
   {
     name: 'New Recruits',
     description: 'Place a pawn or minor piece from your reserves anywhere on your first 3 ranks',
-    cost: 1,
+    cost: 5,
     onDragStartSpare: function(source, piece, position) {
       if (sameColor(turn, piece) === false) return false;
       type = pieceStrToType(piece);
-      if (POINTS[type] > 3 || spare[turn][type] < 1) return false;
+      if (POINTS[type] > 3 || sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = pieceStrToType(piece);
@@ -213,7 +225,7 @@ CHESSCARDS = [
       if ((turn === 'w' && rank > 3) || (turn === 'b' && rank < 6)) return false;
       if (DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
-      spare[turn][type] -= 1;
+      sparePieces[turn][type] -= 1;
     }
   }
 ];
