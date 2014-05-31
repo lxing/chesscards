@@ -1,9 +1,7 @@
-// TODO: Shift these inside anonymous scope when done debuggin
+// TODO: Shift these inside anonymous scope when done debugging
 var game;
-var sparePieces;
-var actionPoints;
 var board;
-var foo;
+var cards;
 
 $(document).ready(function() {
 
@@ -41,7 +39,7 @@ function deepCopy(obj) {
 /**********/
 /* CONSTS */
 /**********/
-DEFAULT_EVENTS = {
+var DEFAULT_EVENTS = {
   onDragStart: function(source, piece, position) {
     return sameColor(turn, piece);
   },
@@ -67,10 +65,9 @@ DEFAULT_EVENTS = {
   }
 }
 
-PIECE_VALUES = {
-  p: 1, n: 3, b: 3, r: 5, q: 9
-}
-
+var PIECE_VALUES = {p: 1, n: 3, b: 3, r: 5, q: 9};
+var DRAW_COST = 3;
+var INIT_HAND_SIZE = 4;
 var BOARD_BORDER_SIZE = 2;
 var SQUARE_SIZE = 0;
 
@@ -98,6 +95,48 @@ function onDrop(source, target, piece, newPos, oldPos) {
   }
 }
 
+function endTurn() {
+  actionPoints[turn] += 1;
+  turn = game.turn();
+
+  board.position(game.fen());
+  events = deepCopy(DEFAULT_EVENTS);
+
+  if (cards['active'] !== null) {
+    cards['deck'].push(cards['active'])
+    cards['active'] = null;
+  }
+
+  renderStatus();
+}
+
+function drawCard(player, force) {
+  if ((force !== true && player != turn) || actionPoints[turn] < card.cost) return;
+  actionPoints[turn] -= DRAW_COST;
+
+  // True random, not FIFO
+  card = cards['deck'].splice(Math.floor(Math.random()*cards['deck'].length))
+  renderStatus();
+  renderCards();
+}
+
+function applyCard(card) {
+  if (cards['active'] !== null || actionPoints[turn] < card.cost) return false;
+  actionPoints[turn] -= card.cost;
+  cards['active'] = card;
+
+  // Override game logic here
+  for (var eventType in DEFAULT_EVENTS) {
+    if (card.hasOwnProperty(eventType)) {
+      events[eventType] = card[eventType];
+    }
+  }
+
+  renderStatus();
+  renderCards();
+}
+
+
 function renderStatus() {
   $('.anymove').html("");
   $('#' + turn + 'move').html("GO")
@@ -111,34 +150,54 @@ function renderStatus() {
   }
 }
 
-function endTurn() {
-  drawCard(turn);
-  actionPoints[turn] += 1;
-  turn = game.turn();
-
-  board.position(game.fen());
-  activeCard = null;
-  events = deepCopy(DEFAULT_EVENTS);
-
-  renderStatus();
+function renderCards() {
 }
 
-function drawCard(turn) {
 
-}
-
-function applyCard(card) {
-  if (activeCard !== null || points[turn] < card.cost) return false;
-  points[turn] -= card.cost;
-  activeCard = card;
-
-  // Override game logic here
-  for (var eventType in DEFAULT_EVENTS) {
-    if (card.hasOwnProperty(eventType)) {
-      events[eventType] = card[eventType];
+/************/
+/* Cards :) */
+/************/
+var CHESSCARDS = [
+  {
+    name: 'Hasty Conscription',
+    description: 'Place a pawn from your reserves anywhere on your first 3 ranks.',
+    cost: 2,
+    freq: 10,
+    onDragStartSpare: function(source, piece, position) {
+      if (sameColor(turn, piece) === false) return false;
+      type = pieceStrToType(piece);
+      if (POINTS[type] > 1 || sparePieces[turn][type] < 1) return false;
+    },
+    onDropSpare: function(source, target, piece, newPos, oldPos) {
+      type = pieceStrToType(piece);
+      rank = posToRank(target);
+      if ((turn === 'w' && rank > 3) || (turn === 'b' && rank < 6)) return false;
+      if (DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
+        return false;
+      sparePieces[turn][type] -= 1;
+    }
+  },
+  {
+    name: 'New Recruits',
+    description: 'Place a pawn or minor piece from your reserves anywhere on your first 3 ranks',
+    cost: 5,
+    freq: 10,
+    onDragStartSpare: function(source, piece, position) {
+      if (sameColor(turn, piece) === false) return false;
+      type = pieceStrToType(piece);
+      if (POINTS[type] > 3 || sparePieces[turn][type] < 1) return false;
+    },
+    onDropSpare: function(source, target, piece, newPos, oldPos) {
+      type = pieceStrToType(piece);
+      rank = posToRank(target);
+      if ((turn === 'w' && rank > 3) || (turn === 'b' && rank < 6)) return false;
+      if (DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
+        return false;
+      sparePieces[turn][type] -= 1;
     }
   }
-}
+];
+
 
 /********/
 /* Init */
@@ -155,14 +214,12 @@ var cfg = {
 game = new Chess();
 turn = game.turn();
 board = new ChessBoard('board', cfg);
-sparePieces = {
+var sparePieces = {
   w: {p: 0, n: 0, b: 0, r: 0, q: 0},
   b: {p: 0, n: 0, b: 0, r: 0, q: 0}
 }
 var actionPoints = {w: 0, b: 0};
-var cards = {w: [], b: []};
-var activeCard = null;
-var deck = [];
+cards = {w: [], b: [], active: null, deck: []};
 var events = deepCopy(DEFAULT_EVENTS);
 
 function initStats() {
@@ -182,56 +239,29 @@ function initStats() {
   $('#wmove').css('margin-top', -SQUARE_SIZE/2);
 }
 
+function initDeck() {
+  for(var i=0; i<CHESSCARDS.length; i++) {
+    card = CHESSCARDS[i];
+    for(var j=0; j<card.freq; j++) {
+      cards['deck'].push(deepCopy(card));
+    }
+  }
+}
+
+function initHands() {
+  for (var i=0; i<INIT_HAND_SIZE; i++) {
+    drawCard('w', true);
+    drawCard('b', true);
+  }
+}
+
 function init() {
   initStats();
+  initDeck();
+  initHands();
 }
 
 init();
-
-
-/************/
-/* Cards :) */
-/************/
-CHESSCARDS = [
-  {
-    name: 'Hasty Conscription',
-    description: 'Place a pawn from your reserves anywhere on your first 3 ranks.',
-    cost: 2,
-    onDragStartSpare: function(source, piece, position) {
-      if (sameColor(turn, piece) === false) return false;
-      type = pieceStrToType(piece);
-      if (POINTS[type] > 1 || sparePieces[turn][type] < 1) return false;
-    },
-    onDropSpare: function(source, target, piece, newPos, oldPos) {
-      type = pieceStrToType(piece);
-      rank = posToRank(target);
-      if ((turn === 'w' && rank > 3) || (turn === 'b' && rank < 6)) return false;
-      if (DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
-        return false;
-      sparePieces[turn][type] -= 1;
-    }
-  },
-  {
-    name: 'New Recruits',
-    description: 'Place a pawn or minor piece from your reserves anywhere on your first 3 ranks',
-    cost: 5,
-    onDragStartSpare: function(source, piece, position) {
-      if (sameColor(turn, piece) === false) return false;
-      type = pieceStrToType(piece);
-      if (POINTS[type] > 3 || sparePieces[turn][type] < 1) return false;
-    },
-    onDropSpare: function(source, target, piece, newPos, oldPos) {
-      type = pieceStrToType(piece);
-      rank = posToRank(target);
-      if ((turn === 'w' && rank > 3) || (turn === 'b' && rank < 6)) return false;
-      if (DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
-        return false;
-      sparePieces[turn][type] -= 1;
-    }
-  }
-];
-
-
 
 
 });
