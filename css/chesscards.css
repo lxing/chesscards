@@ -25,6 +25,10 @@ div.col {
   margin-bottom: -45px;
 }
 
+div.anypoints:hover {
+  color: gray;
+}
+
 #cards-col {
   text-align: center;
 }
