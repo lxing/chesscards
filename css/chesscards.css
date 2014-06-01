@@ -19,7 +19,6 @@ div.col {
   text-align: center;
   float: left;
   position: relative;
-  z-index: -1;
 }
 
 #bstats-container div {
