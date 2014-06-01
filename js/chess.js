@@ -919,7 +919,6 @@ window['Chess'] = window['Chess'] || function(fen) {
     if (move.flags & BITS.CAPTURE) {
       board[move.to] = {type: move.captured, color: them};
     } else if (move.flags & BITS.EP_CAPTURE) {
-      console.log(algebraic(move.from), algebraic(move.to))
       var index;
       if (us === BLACK) {
         index = move.to - 16;

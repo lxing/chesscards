@@ -18,7 +18,6 @@ function randInt(n) {
   return Math.floor(Math.random()*n);
 }
 
-
 // Convert chessboard.js representation -> chess.js representation
 function cbPieceTocPiece(piece) {
   return {
@@ -269,14 +268,14 @@ var CHESSCARDS = [
     cost: 4,
     freq: 5,
     onDragStartSpare: function(source, piece, position) {
-      if (cSameColor(piece, turn) === false) return false;
+      if (!cSameColor(piece, turn)) return false;
       type = cbPieceToType(piece);
       if (PIECE_VALUES[type] > 1 || sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = cbPieceToType(piece);
       rank = posToMyRank(target);
-      if (rank > 3 || DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
+      if (rank > 3 || !DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos))
         return false;
       sparePieces[turn][type] -= 1;
     }
@@ -287,14 +286,14 @@ var CHESSCARDS = [
     cost: 6,
     freq: 4,
     onDragStartSpare: function(source, piece, position) {
-      if (cSameColor(piece, turn) === false) return false;
+      if (!cSameColor(piece, turn)) return false;
       type = cbPieceToType(piece);
       if (PIECE_VALUES[type] > 3 || sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = cbPieceToType(piece);
       rank = posToMyRank(target);
-      if (rank > 3 || DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
+      if (rank > 3 || !DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos))
         return false;
       sparePieces[turn][type] -= 1;
     }
@@ -305,14 +304,14 @@ var CHESSCARDS = [
     cost: 8,
     freq: 3,
     onDragStartSpare: function(source, piece, position) {
-      if (cSameColor(piece, turn) === false) return false;
+      if (!cSameColor(piece, turn)) return false;
       type = cbPieceToType(piece);
       if (sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = cbPieceToType(piece);
       rank = posToMyRank(target);
-      if (rank > 3 || DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
+      if (rank > 3 || !DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos))
         return false;
       sparePieces[turn][type] -= 1;
     }
@@ -358,7 +357,7 @@ var CHESSCARDS = [
     name: 'Hail of Arrows',
     description: 'Capture one of your opponent\'s pawns at random.',
     cost: 5,
-    freq: 300,
+    freq: 3,
     onApply: function() {
       var pawnLocs = [];
 
@@ -383,13 +382,13 @@ var CHESSCARDS = [
     cost: 4,
     freq: 2,
     onDragStartSpare: function(source, piece, position) {
-      if (cSameColor(piece, turn) === false) return false;
+      if (!cSameColor(piece, turn)) return false;
       type = cbPieceToType(piece);
       if (type !==  'n' || sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       targetPiece = game.get(target);
-      if (cSameColorType(targetPiece, turn, 'p') === false) return false;
+      if (!cSameColorType(targetPiece, turn, 'p')) return false;
       game.remove(target);
       sparePieces[turn]['p'] += 1;
       sparePieces[turn]['n'] -= 1;
@@ -407,7 +406,7 @@ var CHESSCARDS = [
         for (var f=1; f<9; f++) {
           var pos = fileMyRankToPos(r, f);
           var piece = game.get(pos);
-          if (cSameColorType(piece, turn, 'b') === false) continue;
+          if (!cSameColorType(piece, turn, 'b')) continue;
 
           for (var d=1; d<DIAG_DIRS.length; d++) {
             var curPos = pos;
@@ -421,13 +420,12 @@ var CHESSCARDS = [
       }
     },
     onDragStartSpare: function(source, piece, position) {
-      return cSameColor(piece, turn) === true ||
-        sparePieces[turn][cbPieceToType(piece)] > 0;
+      return cSameColor(piece, turn) || sparePieces[turn][cbPieceToType(piece)] > 0;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = cbPieceToType(piece);
-      if ((target in turnData['supportedSquares']) === false ||
-        DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
+      if (!(target in turnData['supportedSquares']) ||
+        !DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos))
         return false;
       sparePieces[turn][type] -= 1;
     }
@@ -438,17 +436,43 @@ var CHESSCARDS = [
     cost: 7,
     freq: 1,
     onApply: function() {
+      for (var cont=true; cont;) {
+        var f = 'i';
+        while (!('a' <= f && f <= 'h'))
+          f = prompt('File?');
 
+        pawns = {};
+        var numPawns = 0;
+        for (var r=1; r<9; r++) {
+          var pos = f + r;
+          var piece = game.get(pos);
+          if (piece !== null && piece['type'] === 'p') {
+            pawns[pos] = game.remove(pos);
+            numPawns++;
+          }
+        }
+
+        if (game.in_check()) {
+          for (var pos in pawns) {
+            game.put(pawns[pos], pos)
+          }
+        } else {
+          sparePieces[turn]['p'] += numPawns;
+          game.make_fake_move();
+          endTurn();
+          cont = false;
+        }
+      }
     }
   },
   {
-    name: 'Trojan 2.0',
+    name: 'Trojan Priest',
     description: 'Gain control of an opponent\'s bishop.',
     cost: 10,
     freq: 1,
     onDragStart: function(source, piece, position) {
       if (cSameColor(piece, turn)) return true;
-      if (cSameColor(piece, nextTurn(turn)) === true && cSameType(piece, 'b') === true) {
+      if (cSameColor(piece, nextTurn(turn)) && cSameType(piece, 'b')) {
         piece = game.remove(source);
         piece['color'] = turn;
         game.put(piece, source);
