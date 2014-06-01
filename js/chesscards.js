@@ -175,7 +175,7 @@ function endTurn() {
   events = deepCopy(DEFAULT_EVENTS);
 
   if (cards['active'].length > 0) {
-    cards['deck'].push(cards['active'])
+    cards['deck'].push(cards['active'][0])
     cards['active'] = [];
     renderCards();
   }
