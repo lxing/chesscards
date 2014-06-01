@@ -8,6 +8,7 @@ var actionPoints;
 var events;
 
 var DEBUG = true;
+DEBUG = false;
 
 $(document).ready(function() {
 
@@ -20,7 +21,7 @@ function randInt(n) {
 
 
 // Convert chessboard.js representation -> chess.js representation
-function pieceStrToObj(piece) {
+function cbPieceTocPiece(piece) {
   return {
     color: piece[0],
     type: piece[1].toLowerCase()
@@ -28,7 +29,7 @@ function pieceStrToObj(piece) {
 }
 
 // chessboard.js rep -> type
-function pieceStrToType(piece) {
+function cbPieceToType(piece) {
   return piece[1].toLowerCase();
 }
 
@@ -115,7 +116,7 @@ var DEFAULT_EVENTS = {
   onDropSpare: function(source, target, piece, newPos, oldPos) {
     if (target === 'offboard') return false;
     if (game.get(target) !== null) return false;
-    game.put(pieceStrToObj(piece), target);
+    game.put(cbPieceTocPiece(piece), target);
     if (game.in_check()) {
       game.remove(target);
       return false;
@@ -269,11 +270,11 @@ var CHESSCARDS = [
     freq: 6,
     onDragStartSpare: function(source, piece, position) {
       if (sameColor(piece, turn) === false) return false;
-      type = pieceStrToType(piece);
+      type = cbPieceToType(piece);
       if (PIECE_VALUES[type] > 1 || sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
-      type = pieceStrToType(piece);
+      type = cbPieceToType(piece);
       rank = posToMyRank(target);
       if (rank > 3 || DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
@@ -287,11 +288,11 @@ var CHESSCARDS = [
     freq: 5,
     onDragStartSpare: function(source, piece, position) {
       if (sameColor(piece, turn) === false) return false;
-      type = pieceStrToType(piece);
+      type = cbPieceToType(piece);
       if (PIECE_VALUES[type] > 3 || sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
-      type = pieceStrToType(piece);
+      type = cbPieceToType(piece);
       rank = posToMyRank(target);
       if (rank > 3 || DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
@@ -305,11 +306,11 @@ var CHESSCARDS = [
     freq: 3,
     onDragStartSpare: function(source, piece, position) {
       if (sameColor(piece, turn) === false) return false;
-      type = pieceStrToType(piece);
+      type = cbPieceToType(piece);
       if (sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
-      type = pieceStrToType(piece);
+      type = cbPieceToType(piece);
       rank = posToMyRank(target);
       if (rank > 3 || DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
@@ -324,7 +325,7 @@ var CHESSCARDS = [
     onDrop: function(source, target, piece, newPos, oldPos) {
       col = posToCol(target);
       targetRank = posToMyRank(target);
-      if (pieceStrToType(piece) === 'p' && posToMyRank(source) === 2 && targetRank === 5) {
+      if (cbPieceToType(piece) === 'p' && posToMyRank(source) === 2 && targetRank === 5) {
         if (game.get(target) !== null) return false;
         var move = game.move({
           from: source,
@@ -346,7 +347,7 @@ var CHESSCARDS = [
       if (target === 'offboard') {
         game.remove(source);
         game.swap_turn();
-        sparePieces[turn][pieceStrToType(piece)] += 1;
+        sparePieces[turn][cbPieceToType(piece)] += 1;
         endTurn();
       } else {
         return DEFAULT_EVENTS.onDrop(source, target, piece, newPos, oldPos);
@@ -384,7 +385,7 @@ var CHESSCARDS = [
     freq: 2,
     onDragStartSpare: function(source, piece, position) {
       if (sameColor(piece, turn) === false) return false;
-      type = pieceStrToType(piece);
+      type = cbPieceToType(piece);
       if (type !==  'n' || sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
@@ -422,10 +423,10 @@ var CHESSCARDS = [
     },
     onDragStartSpare: function(source, piece, position) {
       return sameColor(piece, turn) === true ||
-        sparePieces[turn][pieceStrToType(piece)] > 0;
+        sparePieces[turn][cbPieceToType(piece)] > 0;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
-      type = pieceStrToType(piece);
+      type = cbPieceToType(piece);
       if ((target in turnData['supportedSquares']) === false ||
         DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
