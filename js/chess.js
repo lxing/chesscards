@@ -760,34 +760,38 @@ window['Chess'] = window['Chess'] || function(fen) {
      * Zobrist key would be maintained in the make_move/undo_move functions,
      * avoiding the costly that we do below.
      */
-    var moves = [];
-    var positions = {};
-    var repetition = false;
 
-    while (true) {
-      var move = undo_move();
-      if (!move) break;
-      moves.push(move);
-    }
+    // Chesscards screws up the gamestate so undo crashes.
+    return false;
 
-    while (true) {
-      /* remove the last two fields in the FEN string, they're not needed
-       * when checking for draw by rep */
-      var fen = generate_fen().split(' ').slice(0,4).join(' ');
+    // var moves = [];
+    // var positions = {};
+    // var repetition = false;
 
-      /* has the position occurred three or move times */
-      positions[fen] = (fen in positions) ? positions[fen] + 1 : 1;
-      if (positions[fen] >= 3) {
-        repetition = true;
-      }
+    // while (true) {
+    //   var move = undo_move();
+    //   if (!move) break;
+    //   moves.push(move);
+    // }
 
-      if (!moves.length) {
-        break;
-      }
-      make_move(moves.pop());
-    }
+    // while (true) {
+    //   /* remove the last two fields in the FEN string, they're not needed
+    //    * when checking for draw by rep */
+    //   var fen = generate_fen().split(' ').slice(0,4).join(' ');
 
-    return repetition;
+    //   /* has the position occurred three or move times */
+    //   positions[fen] = (fen in positions) ? positions[fen] + 1 : 1;
+    //   if (positions[fen] >= 3) {
+    //     repetition = true;
+    //   }
+
+    //   if (!moves.length) {
+    //     break;
+    //   }
+    //   make_move(moves.pop());
+    // }
+
+    // return repetition;
   }
 
   function push(move) {

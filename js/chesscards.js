@@ -2,6 +2,8 @@
 var game;
 var board;
 var cards;
+var turnData;
+var events
 
 $(document).ready(function() {
 
@@ -24,11 +26,33 @@ function posToRank(pos) {
 }
 
 function posToCol(pos) {
-  return pos.charCodeAt(0) - 97;
+  return pos.charCodeAt(0) - 96;
+}
+
+function posToMyRank(pos) {
+  if (turn === 'w') return posToRank(pos);
+  return 9 - posToRank(pos);
+}
+
+function myRankToRank(rank) {
+  if (turn === 'w') return rank;
+  return 9 - rank;
+}
+
+function colToStr(col) {
+  return String.fromCharCode(col + 96);
+}
+
+function colMyRankToPos(col, rank) {
+  return colToStr(col) + myRankToRank(rank);
 }
 
 function sameColor(color, piece) {
   return color === piece[0];
+}
+
+function activeCard() {
+  return cards['active'][0]
 }
 
 function deepCopy(obj) {
@@ -61,13 +85,15 @@ var DEFAULT_EVENTS = {
   onDropSpare: function(source, target, piece, newPos, oldPos) {
     if (game.get(target) !== null) return false;
     game.put(pieceStrToObj(piece), target);
+    if (game.in_check()) return false;
     game.swap_turn();
   }
 }
 
 var PIECE_VALUES = {p: 1, n: 3, b: 3, r: 5, q: 9};
-var DRAW_COST = 3;
+var DRAW_COST = 0; //3;
 var INIT_HAND_SIZE = 4;
+var ACTION_POINT_INCR = 1;
 var BOARD_BORDER_SIZE = 2;
 var SQUARE_SIZE = 0;
 
@@ -96,10 +122,9 @@ function onDrop(source, target, piece, newPos, oldPos) {
 }
 
 function endTurn() {
-  actionPoints[turn] += 1;
+  actionPoints[turn] += ACTION_POINT_INCR;
   turn = game.turn();
-
-  board.position(game.fen());
+  turnData = {};
   events = deepCopy(DEFAULT_EVENTS);
 
   if (cards['active'].length > 0) {
@@ -109,6 +134,7 @@ function endTurn() {
   }
 
   renderStatus();
+  board.position(game.fen());
 }
 
 function drawCard(player, force) {
@@ -164,7 +190,7 @@ function renderCards() {
       var card = cards[zone][i];
       var div = document.createElement('div');
       $(div).addClass('card').addClass(zone + 'card')
-            .html(card['cost'] + 'AP | ' + card['name'] + ' | ' + card['description'])
+            .html(card['cost'] + ' | ' + card['name'] + '<br>' + card['description'])
             .appendTo(container);
 
       if (zone === 'active') {
@@ -178,6 +204,7 @@ function renderCards() {
 
 function makeOnCardClicked(i, player) {
   return function() {
+    if (player !== turn) return;
     applyCard(cards[player].splice(i, 1)[0]);
   }
 }
@@ -190,8 +217,8 @@ var CHESSCARDS = [
   {
     name: 'Hasty Conscription',
     description: 'Place a pawn from your reserves anywhere on your first 3 ranks.',
-    cost: 0,
-    freq: 10,
+    cost: 2,
+    freq: 5,
     onDragStartSpare: function(source, piece, position) {
       if (sameColor(turn, piece) === false) return false;
       type = pieceStrToType(piece);
@@ -199,8 +226,8 @@ var CHESSCARDS = [
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = pieceStrToType(piece);
-      rank = posToRank(target);
-      if ((turn === 'w' && rank > 3) || (turn === 'b' && rank < 6)) return false;
+      rank = posToMyRank(target);
+      if (rank > 3) return false;
       if (DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
       sparePieces[turn][type] -= 1;
@@ -208,9 +235,9 @@ var CHESSCARDS = [
   },
   {
     name: 'New Recruits',
-    description: 'Place a pawn or minor piece from your reserves anywhere on your first 3 ranks.',
-    cost: 0,
-    freq: 10,
+    description: 'Place a pawn or minor from your reserves anywhere on your first 3 ranks.',
+    cost: 5,
+    freq: 5,
     onDragStartSpare: function(source, piece, position) {
       if (sameColor(turn, piece) === false) return false;
       type = pieceStrToType(piece);
@@ -218,11 +245,32 @@ var CHESSCARDS = [
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = pieceStrToType(piece);
-      rank = posToRank(target);
-      if ((turn === 'w' && rank > 3) || (turn === 'b' && rank < 6)) return false;
+      rank = posToMyRank(target);
+      if (rank > 3) return false;
       if (DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
       sparePieces[turn][type] -= 1;
+    }
+  },
+  {
+    name: 'Skirmish Formation',
+    description: 'Pawns on your second rank can advance up to 3 spaces this turn.',
+    cost: 2,
+    freq: 3,
+    onDrop: function(source, target, piece, newPos, oldPos) {
+      col = posToCol(target);
+      targetRank = posToMyRank(target);
+      if (pieceStrToType(piece) === 'p' && posToMyRank(source) === 2 && targetRank === 5) {
+        if (game.get(target) !== null) return false;
+        var move = game.move({
+          from: source,
+          to: colMyRankToPos(col, targetRank - 1)
+        });
+        if (move === null) return false;
+        game.put(game.remove(colMyRankToPos(col, targetRank - 1)), target);
+      } else {
+        return DEFAULT_EVENTS.onDrop(source, target, piece, newPos, oldPos);
+      }
     }
   }
 ];
@@ -242,6 +290,7 @@ var cfg = {
 
 game = new Chess();
 turn = game.turn();
+turnData = {};
 board = new ChessBoard('board', cfg);
 var sparePieces = {
   w: {p: 0, n: 0, b: 0, r: 0, q: 0},
@@ -249,7 +298,7 @@ var sparePieces = {
 }
 var actionPoints = {w: 0, b: 0};
 cards = {w: [], b: [], active: [], deck: []};
-var events = deepCopy(DEFAULT_EVENTS);
+events = deepCopy(DEFAULT_EVENTS);
 
 function initStats() {
   var boardWidth = parseInt($('#board').css('width'), 10) - 1;
@@ -258,20 +307,23 @@ function initStats() {
   var bstats = $('#bstats-container div');
   var wstats = $('#wstats-container div');
   for(var i=0; i<bstats.length; i++) {
-    $(bstats[i]).css('width',SQUARE_SIZE)
-      .css('height', SQUARE_SIZE).css('width', SQUARE_SIZE)
-    $(wstats[i]).css('width',SQUARE_SIZE)
-      .css('height', SQUARE_SIZE).css('width', SQUARE_SIZE)
+    $(bstats[i]).css('width',SQUARE_SIZE).css('height', SQUARE_SIZE).css('width', SQUARE_SIZE)
+    $(wstats[i]).css('width',SQUARE_SIZE).css('height', SQUARE_SIZE).css('width', SQUARE_SIZE)
   }
 
   $('#bmove').css('margin-top', SQUARE_SIZE/2);
   $('#wmove').css('margin-top', -SQUARE_SIZE/2);
+  $('#bpoints').css('margin-top', SQUARE_SIZE/2);
+  $('#wpoints').css('margin-top', -SQUARE_SIZE/2);
+
+  $('#draw').click(function(){drawCard(turn)});
 }
 
 function initDeck() {
   for(var i=0; i<CHESSCARDS.length; i++) {
     card = CHESSCARDS[i];
     for(var j=0; j<card['freq']; j++) {
+      card['cost'] = 0; // TODO: remove
       cards['deck'].push(deepCopy(card));
     }
   }
