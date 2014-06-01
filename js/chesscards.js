@@ -49,12 +49,12 @@ function myRankToRank(rank) {
   return (turn === 'w') ? rank : 9 - rank;
 }
 
-// 5 -> f
+// 6 -> f
 function fileToStr(file) {
   return String.fromCharCode(file + 96);
 }
 
-// 5, 6 -> f6
+// 6, 5 -> f5
 function fileMyRankToPos(file, rank) {
   return fileToStr(file) + myRankToRank(rank);
 }
@@ -266,16 +266,16 @@ var CHESSCARDS = [
     name: 'Hasty Conscription',
     description: 'Place a pawn from your reserves anywhere on your first 3 ranks.',
     cost: 4,
-    freq: 5,
+    freq: 4,
     onDragStartSpare: function(source, piece, position) {
       if (!cSameColor(piece, turn)) return false;
       type = cbPieceToType(piece);
-      if (PIECE_VALUES[type] > 1 || sparePieces[turn][type] < 1) return false;
+      if (type !== 'p' || sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = cbPieceToType(piece);
       rank = posToMyRank(target);
-      if (rank > 3 || !DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos))
+      if (rank > 3 || DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
       sparePieces[turn][type] -= 1;
     }
@@ -284,7 +284,7 @@ var CHESSCARDS = [
     name: 'New Recruits',
     description: 'Place a pawn or minor from your reserves anywhere on your first 3 ranks.',
     cost: 6,
-    freq: 4,
+    freq: 5,
     onDragStartSpare: function(source, piece, position) {
       if (!cSameColor(piece, turn)) return false;
       type = cbPieceToType(piece);
@@ -293,7 +293,7 @@ var CHESSCARDS = [
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = cbPieceToType(piece);
       rank = posToMyRank(target);
-      if (rank > 3 || !DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos))
+      if (rank > 3 || DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
       sparePieces[turn][type] -= 1;
     }
@@ -311,13 +311,13 @@ var CHESSCARDS = [
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = cbPieceToType(piece);
       rank = posToMyRank(target);
-      if (rank > 3 || !DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos))
+      if (rank > 3 || DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
       sparePieces[turn][type] -= 1;
     }
   },
   {
-    name: 'Skirmish Formation',
+    name: 'Skirmishers',
     description: 'Pawns on your second rank can advance up to 3 spaces this turn.',
     cost: 2,
     freq: 2,
@@ -344,7 +344,11 @@ var CHESSCARDS = [
     freq: 3,
     onDrop: function(source, target, piece, newPos, oldPos) {
       if (target === 'offboard') {
-        game.remove(source);
+        var piece = game.remove(source);
+        if (game.in_check()) {
+          game.put(piece, source);
+          return false;
+        }
         game.make_fake_move();
         sparePieces[turn][cbPieceToType(piece)] += 1;
         endTurn();
@@ -397,7 +401,7 @@ var CHESSCARDS = [
   },
   {
     name: 'Long-Range Support',
-    description: 'Place any piece from your reserves on a bishop-supported square.',
+    description: 'Place any piece from your reserves on any bishop-supported square.',
     cost: 9,
     freq: 2,
     onApply: function() {
@@ -425,13 +429,13 @@ var CHESSCARDS = [
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       type = cbPieceToType(piece);
       if (!(target in turnData['supportedSquares']) ||
-        !DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos))
+        DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
       sparePieces[turn][type] -= 1;
     }
   },
   {
-    name: 'Battering Ram',
+    name: 'Grapeshot Volley',
     description: 'Capture all pawns from a file of your choice (yours included).',
     cost: 7,
     freq: 1,
@@ -468,7 +472,7 @@ var CHESSCARDS = [
   {
     name: 'Trojan Priest',
     description: 'Gain control of an opponent\'s bishop.',
-    cost: 10,
+    cost: 9,
     freq: 1,
     onDragStart: function(source, piece, position) {
       if (cSameColor(piece, turn)) return true;
@@ -480,6 +484,26 @@ var CHESSCARDS = [
         endTurn();
       }
       return false;
+    }
+  },
+  {
+    name: 'Phalanx Formation',
+    description: 'Place a pawn from your reserves on any pawn-supported square.',
+    cost: 3,
+    freq: 3,
+    onDragStartSpare: function(source, piece, position) {
+      if (!cSameColor(piece, turn)) return false;
+      type = cbPieceToType(piece);
+      if (PIECE_VALUES[type] > 3 || sparePieces[turn][type] < 1) return false;
+    },
+    onDropSpare: function(source, target, piece, newPos, oldPos) {
+      type = cbPieceToType(piece);
+      supportDirs = (turn === 'w') ? [[1, -1], [-1, -1]] : [[1, 1], [-1, 1]];
+      if (!(cSameColorType(game.get(adjPos(target, supportDirs[0])), turn, 'p') ||
+        cSameColorType(game.get(adjPos(target, supportDirs[1])), turn, 'p')) ||
+        DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
+        return false;
+      sparePieces[turn][type] -= 1;
     }
   }
 ];
