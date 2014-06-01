@@ -455,7 +455,7 @@ window['Chess'] = window['Chess'] || function(fen) {
     if (board[to]) {
       move.captured = board[to].type;
     } else if (flags & BITS.EP_CAPTURE) {
-        move.captured = PAWN;
+      move.captured = PAWN;
     }
     return move;
   }
@@ -919,6 +919,7 @@ window['Chess'] = window['Chess'] || function(fen) {
     if (move.flags & BITS.CAPTURE) {
       board[move.to] = {type: move.captured, color: them};
     } else if (move.flags & BITS.EP_CAPTURE) {
+      console.log(algebraic(move.from), algebraic(move.to))
       var index;
       if (us === BLACK) {
         index = move.to - 16;
@@ -1536,7 +1537,12 @@ window['Chess'] = window['Chess'] || function(fen) {
       return turn;
     },
 
-    swap_turn: function() {
+    make_fake_move: function() {
+      /* Disable en passant . Otherwise we might generate an en
+       * passant against ourselves and undo it, creating an enemy
+       * pawn out of nowhere!
+       */
+      ep_square = EMPTY;
       turn = swap_color(turn);
     },
 

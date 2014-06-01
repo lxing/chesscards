@@ -8,7 +8,6 @@ var actionPoints;
 var events;
 
 var DEBUG = true;
-DEBUG = false;
 
 $(document).ready(function() {
 
@@ -39,7 +38,7 @@ function posToRank(pos) {
 }
 
 // a5 -> a
-function posToCol(pos) {
+function posToFile(pos) {
   return pos.charCodeAt(0) - 96;
 }
 
@@ -52,38 +51,40 @@ function myRankToRank(rank) {
 }
 
 // 5 -> f
-function colToStr(col) {
-  return String.fromCharCode(col + 96);
+function fileToStr(file) {
+  return String.fromCharCode(file + 96);
 }
 
 // 5, 6 -> f6
-function colMyRankToPos(col, rank) {
-  return colToStr(col) + myRankToRank(rank);
+function fileMyRankToPos(file, rank) {
+  return fileToStr(file) + myRankToRank(rank);
 }
 
 // e4, [0, 1] -> e5
 function adjPos(pos, dir) {
   var rank = posToRank(pos) + dir[1];
-  var col = posToCol(pos) + dir[0];
-  if (rank < 1 || col < 1 || rank > 8 || col > 8) return null;
-  return colToStr(col) + rank;
+  var file = posToFile(pos) + dir[0];
+  if (rank < 1 || file < 1 || rank > 8 || file > 8) return null;
+  return fileToStr(file) + rank;
 }
 
 // For chessboard.js objs
-function sameColor(piece, color) {
+function cSameColor(piece, color) {
   return piece !== null && color === piece[0];
 }
 
+function cSameType(piece, type) {
+  return piece !== null && type === piece[1].toLowerCase();
+}
+
 // For chess.js objs
-function sameColorType(piece, color, type) {
+function cSameColorType(piece, color, type) {
   return piece !== null && piece['color'] === color && piece['type'] === type;
 }
 
 function nextTurn(turn) {
   return (turn === 'w') ? 'b' : 'w';
 }
-
-
 
 function deepCopy(obj) {
   return $.extend(true, {}, obj);
@@ -95,7 +96,7 @@ function deepCopy(obj) {
 /**********/
 var DEFAULT_EVENTS = {
   onDragStart: function(source, piece, position) {
-    return sameColor(piece, turn);
+    return cSameColor(piece, turn);
   },
   onDragStartSpare: function() { return false; },
   onDrop: function(source, target, piece, newPos, oldPos) {
@@ -121,15 +122,15 @@ var DEFAULT_EVENTS = {
       game.remove(target);
       return false;
     }
-    game.swap_turn();
+    game.make_fake_move();
   }
 }
 
 var SQ_DIRS = [
   [0, 1],  // +rank
-  [1, 0],  // +col
-  [0, -1], // -rank
-  [-1, 0], // -col
+  [1, 0],  // +file
+  [0, -1],
+  [-1, 0],
 ]
 
 var DIAG_DIRS = [
@@ -151,7 +152,6 @@ var SQUARE_SIZE = 0;
 /* Event Handlers */
 /******************/
 function onDragStart(source, piece, position) {
-  if (game.game_over() === true) return false;
   if (source === 'spare') {
     return events.onDragStartSpare(source, piece, position);
   } else {
@@ -218,7 +218,7 @@ function applyCard(card) {
 
 function renderStatus() {
   $('.anymove').html("");
-  $('#' + turn + 'move').html("GO")
+  $('#' + turn + 'move').html("GO!")
 
   $('#wpoints').html(actionPoints['w'] + ' AP');
   $('#bpoints').html(actionPoints['b'] + ' AP');
@@ -267,9 +267,9 @@ var CHESSCARDS = [
     name: 'Hasty Conscription',
     description: 'Place a pawn from your reserves anywhere on your first 3 ranks.',
     cost: 4,
-    freq: 6,
+    freq: 5,
     onDragStartSpare: function(source, piece, position) {
-      if (sameColor(piece, turn) === false) return false;
+      if (cSameColor(piece, turn) === false) return false;
       type = cbPieceToType(piece);
       if (PIECE_VALUES[type] > 1 || sparePieces[turn][type] < 1) return false;
     },
@@ -285,9 +285,9 @@ var CHESSCARDS = [
     name: 'New Recruits',
     description: 'Place a pawn or minor from your reserves anywhere on your first 3 ranks.',
     cost: 6,
-    freq: 5,
+    freq: 4,
     onDragStartSpare: function(source, piece, position) {
-      if (sameColor(piece, turn) === false) return false;
+      if (cSameColor(piece, turn) === false) return false;
       type = cbPieceToType(piece);
       if (PIECE_VALUES[type] > 3 || sparePieces[turn][type] < 1) return false;
     },
@@ -305,7 +305,7 @@ var CHESSCARDS = [
     cost: 8,
     freq: 3,
     onDragStartSpare: function(source, piece, position) {
-      if (sameColor(piece, turn) === false) return false;
+      if (cSameColor(piece, turn) === false) return false;
       type = cbPieceToType(piece);
       if (sparePieces[turn][type] < 1) return false;
     },
@@ -323,16 +323,16 @@ var CHESSCARDS = [
     cost: 2,
     freq: 2,
     onDrop: function(source, target, piece, newPos, oldPos) {
-      col = posToCol(target);
+      file = posToFile(target);
       targetRank = posToMyRank(target);
       if (cbPieceToType(piece) === 'p' && posToMyRank(source) === 2 && targetRank === 5) {
         if (game.get(target) !== null) return false;
         var move = game.move({
           from: source,
-          to: colMyRankToPos(col, targetRank - 1)
+          to: fileMyRankToPos(file, targetRank - 1)
         });
         if (move === null) return false;
-        game.put(game.remove(colMyRankToPos(col, targetRank - 1)), target);
+        game.put(game.remove(fileMyRankToPos(file, targetRank - 1)), target);
       } else {
         return DEFAULT_EVENTS.onDrop(source, target, piece, newPos, oldPos);
       }
@@ -346,7 +346,7 @@ var CHESSCARDS = [
     onDrop: function(source, target, piece, newPos, oldPos) {
       if (target === 'offboard') {
         game.remove(source);
-        game.swap_turn();
+        game.make_fake_move();
         sparePieces[turn][cbPieceToType(piece)] += 1;
         endTurn();
       } else {
@@ -358,24 +358,23 @@ var CHESSCARDS = [
     name: 'Hail of Arrows',
     description: 'Capture one of your opponent\'s pawns at random.',
     cost: 5,
-    freq: 3,
+    freq: 300,
     onApply: function() {
       var pawnLocs = [];
 
       for (var r=1; r<9; r++) {
-        for (var c=1; c<9; c++) {
-          var pos = colMyRankToPos(r, c);
-          if (sameColorType(game.get(pos), nextTurn(turn), 'p')) pawnLocs.push(pos);
+        for (var f=1; f<9; f++) {
+          var pos = fileMyRankToPos(r, f);
+          if (cSameColorType(game.get(pos), nextTurn(turn), 'p')) pawnLocs.push(pos);
         }
       }
 
       if (pawnLocs.length > 0) {
         game.remove(pawnLocs[randInt(pawnLocs.length)]);
         sparePieces[turn]['p'] += 1;
+        game.make_fake_move();
+        endTurn();
       }
-
-      game.swap_turn();
-      endTurn();
     }
   },
   {
@@ -384,13 +383,13 @@ var CHESSCARDS = [
     cost: 4,
     freq: 2,
     onDragStartSpare: function(source, piece, position) {
-      if (sameColor(piece, turn) === false) return false;
+      if (cSameColor(piece, turn) === false) return false;
       type = cbPieceToType(piece);
       if (type !==  'n' || sparePieces[turn][type] < 1) return false;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
       targetPiece = game.get(target);
-      if (sameColorType(targetPiece, turn, 'p') === false) return false;
+      if (cSameColorType(targetPiece, turn, 'p') === false) return false;
       game.remove(target);
       sparePieces[turn]['p'] += 1;
       sparePieces[turn]['n'] -= 1;
@@ -405,10 +404,10 @@ var CHESSCARDS = [
     onApply: function() {
       turnData['supportedSquares'] = {};
       for (var r=1; r<9; r++) {
-        for (var c=1; c<9; c++) {
-          var pos = colMyRankToPos(r, c);
+        for (var f=1; f<9; f++) {
+          var pos = fileMyRankToPos(r, f);
           var piece = game.get(pos);
-          if (sameColorType(piece, turn, 'b') === false) continue;
+          if (cSameColorType(piece, turn, 'b') === false) continue;
 
           for (var d=1; d<DIAG_DIRS.length; d++) {
             var curPos = pos;
@@ -422,7 +421,7 @@ var CHESSCARDS = [
       }
     },
     onDragStartSpare: function(source, piece, position) {
-      return sameColor(piece, turn) === true ||
+      return cSameColor(piece, turn) === true ||
         sparePieces[turn][cbPieceToType(piece)] > 0;
     },
     onDropSpare: function(source, target, piece, newPos, oldPos) {
@@ -431,6 +430,32 @@ var CHESSCARDS = [
         DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
       sparePieces[turn][type] -= 1;
+    }
+  },
+  {
+    name: 'Battering Ram',
+    description: 'Capture all pawns from a file of your choice (yours included).',
+    cost: 7,
+    freq: 1,
+    onApply: function() {
+
+    }
+  },
+  {
+    name: 'Trojan 2.0',
+    description: 'Gain control of an opponent\'s bishop.',
+    cost: 10,
+    freq: 1,
+    onDragStart: function(source, piece, position) {
+      if (cSameColor(piece, turn)) return true;
+      if (cSameColor(piece, nextTurn(turn)) === true && cSameType(piece, 'b') === true) {
+        piece = game.remove(source);
+        piece['color'] = turn;
+        game.put(piece, source);
+        game.make_fake_move();
+        endTurn();
+      }
+      return false;
     }
   }
 ];
@@ -507,6 +532,5 @@ function init() {
 }
 
 init();
-
 
 });
