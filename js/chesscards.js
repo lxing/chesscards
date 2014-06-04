@@ -8,6 +8,7 @@ var actionPoints;
 var events;
 
 var DEBUG = true;
+DEBUG = false;
 
 $(document).ready(function() {
 
@@ -365,6 +366,8 @@ var CHESSCARDS = [
     cost: 5,
     freq: 3,
     onApply: function() {
+      if (game.in_check()) return false; // TODO: Status message
+
       var pawnLocs = [];
 
       for (var r=1; r<9; r++) {
