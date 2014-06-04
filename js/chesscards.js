@@ -169,6 +169,9 @@ function onDrop(source, target, piece, newPos, oldPos) {
 }
 
 function endTurn() {
+  board.position(game.fen());
+  if (turnData['disableEnd']) return;
+
   actionPoints[turn] += ACTION_POINT_INCR;
   turn = game.turn();
   turnData = {};
@@ -181,7 +184,6 @@ function endTurn() {
   }
 
   renderStatus();
-  board.position(game.fen());
 }
 
 function drawCard(player, force) {
@@ -504,6 +506,38 @@ var CHESSCARDS = [
         DEFAULT_EVENTS.onDropSpare(source, target, piece, newPos, oldPos) === false)
         return false;
       sparePieces[turn][type] -= 1;
+    }
+  },
+  {
+    name: 'Pincer Maneuver',
+    description: 'You may move two different pieces this turn if neither move captures.',
+    cost: 6,
+    freq: 3,
+    onApply: function() {
+      turnData['moveCount'] = 0;
+      turnData['disableEnd'] = true;
+    },
+    onDragStart: function(source, piece, position) {
+      if ((turnData['moveCount'] > 0 && source === turnData['prevMove']) ||
+        DEFAULT_EVENTS.onDragStart(source, piece, position) === false)
+        return false;
+    },
+    onDrop: function(source, target, piece, newPos, oldPos) {
+      var capture = (game.get(target) !== null);
+
+      // If the first move wansn't a capture but there are no
+      // non-capture second moves left, this will break.
+      if ((turnData['moveCount'] > 0 && capture) ||
+        DEFAULT_EVENTS.onDrop(source, target, piece, newPos, oldPos) === false)
+        return false;
+
+      if (turnData['moveCount'] > 0 || capture) {
+        turnData['disableEnd'] = false;
+      } else {
+        turnData['moveCount']++;
+        turnData['prevMove'] = target;
+        game.make_fake_move();
+      }
     }
   }
 ];
